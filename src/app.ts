@@ -8,7 +8,7 @@ import auth from './middlewares/auth';
 import { requestLogger, errorLogger } from './middlewares/logger';
 import errorHandler from './middlewares/errorHandler';
 import { validateSignup, validateSignin } from './middlewares/validation';
-import HttpStatus from './types/httpStatus';
+import NotFoundError from './errors/NotFoundError';
 
 const app = express();
 const PORT = 3000;
@@ -33,6 +33,11 @@ app.get('/', (req, res) => {
   res.send('Hello, World!');
 });
 
+// Обработка несуществующих роутов
+app.use('*', (req, res, next) => {
+  next(new NotFoundError('Маршрут не найден'));
+});
+
 // Логирование ошибок
 app.use(errorLogger);
 
@@ -41,11 +46,6 @@ app.use(errors());
 
 // Централизованная обработка ошибок
 app.use(errorHandler);
-
-// Обработка несуществующих роутов
-app.use('*', (req, res) => {
-  res.status(HttpStatus.NOT_FOUND).json({ message: 'Запрашиваемый ресурс не найден' });
-});
 
 // Подключение к MongoDB и запуск сервера
 const start = async () => {
