@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import User from '../models/user';
+import HttpStatus from '../types/httpStatus';
 
 export const getUsers = async (req: Request, res: Response) => {
   try {
@@ -12,7 +13,7 @@ export const getUsers = async (req: Request, res: Response) => {
     }));
     return res.send(formattedUsers);
   } catch (error) {
-    return res.status(500).send({ message: 'На сервере произошла ошибка' });
+    return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send({ message: 'На сервере произошла ошибка' });
   }
 };
 
@@ -21,13 +22,13 @@ export const getUserById = async (req: Request, res: Response) => {
     const { userId } = req.params;
 
     if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
-      return res.status(400).send({ message: 'Некорректный _id пользователя' });
+      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Некорректный _id пользователя' });
     }
 
     const user = await User.findById(userId);
 
     if (!user) {
-      return res.status(404).send({ message: 'Пользователь не найден' });
+      return res.status(HttpStatus.NOT_FOUND).send({ message: 'Пользователь не найден' });
     }
 
     const formattedUser = {
@@ -39,7 +40,7 @@ export const getUserById = async (req: Request, res: Response) => {
 
     return res.send(formattedUser);
   } catch (error) {
-    return res.status(500).send({ message: 'На сервере произошла ошибка' });
+    return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send({ message: 'На сервере произошла ошибка' });
   }
 };
 
@@ -60,19 +61,19 @@ export const createUser = async (req: Request, res: Response) => {
       avatar: savedUser.avatar,
       _id: savedUser._id,
     };
-    return res.status(201).send(formattedUser);
+    return res.status(HttpStatus.CREATED).send(formattedUser);
   } catch (error) {
     if (error instanceof Error && error.name === 'ValidationError') {
-      return res.status(400).send({ message: 'Переданы некорректные данные при создании пользователя' });
+      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Переданы некорректные данные при создании пользователя' });
     }
-    return res.status(500).send({ message: 'На сервере произошла ошибка' });
+    return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send({ message: 'На сервере произошла ошибка' });
   }
 };
 
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const { name, about } = req.body;
-    const userId = (req as any).user?._id;
+    const userId = req.user?._id;
 
     const user = await User.findByIdAndUpdate(
       userId,
@@ -81,7 +82,7 @@ export const updateUser = async (req: Request, res: Response) => {
     );
 
     if (!user) {
-      return res.status(404).send({ message: 'Пользователь не найден' });
+      return res.status(HttpStatus.NOT_FOUND).send({ message: 'Пользователь не найден' });
     }
 
     const formattedUser = {
@@ -94,16 +95,16 @@ export const updateUser = async (req: Request, res: Response) => {
     return res.send(formattedUser);
   } catch (error) {
     if (error instanceof Error && error.name === 'ValidationError') {
-      return res.status(400).send({ message: 'Переданы некорректные данные при обновлении профиля' });
+      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Переданы некорректные данные при обновлении профиля' });
     }
-    return res.status(500).send({ message: 'На сервере произошла ошибка' });
+    return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send({ message: 'На сервере произошла ошибка' });
   }
 };
 
 export const updateAvatar = async (req: Request, res: Response) => {
   try {
     const { avatar } = req.body;
-    const userId = (req as any).user?._id;
+    const userId = req.user?._id;
 
     const user = await User.findByIdAndUpdate(
       userId,
@@ -112,7 +113,7 @@ export const updateAvatar = async (req: Request, res: Response) => {
     );
 
     if (!user) {
-      return res.status(404).send({ message: 'Пользователь не найден' });
+      return res.status(HttpStatus.NOT_FOUND).send({ message: 'Пользователь не найден' });
     }
 
     const formattedUser = {
@@ -125,8 +126,8 @@ export const updateAvatar = async (req: Request, res: Response) => {
     return res.send(formattedUser);
   } catch (error) {
     if (error instanceof Error && error.name === 'ValidationError') {
-      return res.status(400).send({ message: 'Переданы некорректные данные при обновлении аватара' });
+      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Переданы некорректные данные при обновлении аватара' });
     }
-    return res.status(500).send({ message: 'На сервере произошла ошибка' });
+    return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send({ message: 'На сервере произошла ошибка' });
   }
 };
