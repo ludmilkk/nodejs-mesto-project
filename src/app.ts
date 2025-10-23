@@ -1,27 +1,46 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import mongoose from 'mongoose';
+import cookieParser from 'cookie-parser';
+import { errors } from 'celebrate';
 import router from './routes';
+import { createUser, login } from './controllers/users';
+import auth from './middlewares/auth';
+import { requestLogger, errorLogger } from './middlewares/logger';
+import errorHandler from './middlewares/errorHandler';
+import { validateSignup, validateSignin } from './middlewares/validation';
 import HttpStatus from './types/httpStatus';
 
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+app.use(cookieParser());
 
-// Временное решение авторизации
-app.use((req: Request, res: Response, next: NextFunction) => {
-  req.user = {
-    _id: '68f66fb5ee3f14282a5459cc',
-  };
-  next();
-});
+// Логирование запросов
+app.use(requestLogger);
 
-// Подключение роутов
+// Роуты регистрации и авторизации
+app.post('/signin', validateSignin, login);
+app.post('/signup', validateSignup, createUser);
+
+// Защита всех остальных роутов
+app.use(auth);
+
+// Подключение защищенных роутов
 app.use(router);
 
 app.get('/', (req, res) => {
   res.send('Hello, World!');
 });
+
+// Логирование ошибок
+app.use(errorLogger);
+
+// Обработка ошибок
+app.use(errors());
+
+// Централизованная обработка ошибок
+app.use(errorHandler);
 
 // Обработка несуществующих роутов
 app.use('*', (req, res) => {

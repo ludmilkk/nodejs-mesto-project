@@ -8,6 +8,8 @@ export interface ICard extends Document {
   createdAt: Date;
 }
 
+const urlPattern = /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&/=]*)$/;
+
 const cardSchema = new Schema<ICard>({
   name: {
     type: String,
@@ -18,6 +20,10 @@ const cardSchema = new Schema<ICard>({
   link: {
     type: String,
     required: true,
+    validate: {
+      validator: (v: string) => urlPattern.test(v),
+      message: 'Неправильный формат ссылки',
+    },
   },
   owner: {
     type: Schema.Types.ObjectId,

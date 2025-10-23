@@ -1,9 +1,12 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import Card from '../models/card';
 import { IUser } from '../models/user';
 import HttpStatus from '../types/httpStatus';
+import BadRequestError from '../errors/BadRequestError';
+import NotFoundError from '../errors/NotFoundError';
+import ForbiddenError from '../errors/ForbiddenError';
 
-export const getCards = async (req: Request, res: Response) => {
+export const getCards = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const cards = await Card.find({}).populate('owner');
     const formattedCards = cards.map((card) => {
@@ -24,11 +27,11 @@ export const getCards = async (req: Request, res: Response) => {
     });
     return res.send(formattedCards);
   } catch (error) {
-    return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send({ message: 'На сервере произошла ошибка' });
+    return next(error);
   }
 };
 
-export const createCard = async (req: Request, res: Response) => {
+export const createCard = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { name, link } = req.body;
 
@@ -48,41 +51,48 @@ export const createCard = async (req: Request, res: Response) => {
       createdAt: savedCard.createdAt,
     };
     return res.status(HttpStatus.CREATED).send(formattedCard);
-  } catch (error) {
-    if (error instanceof Error && error.name === 'ValidationError') {
-      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Переданы некорректные данные при создании карточки' });
+  } catch (error: any) {
+    if (error.name === 'ValidationError') {
+      return next(new BadRequestError('Переданы некорректные данные при создании карточки'));
     }
-    return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send({ message: 'На сервере произошла ошибка' });
+    return next(error);
   }
 };
 
-export const deleteCard = async (req: Request, res: Response) => {
-  try {
-    const { cardId } = req.params;
-
-    if (!cardId.match(/^[0-9a-fA-F]{24}$/)) {
-      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Некорректный _id карточки' });
-    }
-
-    const card = await Card.findByIdAndDelete(cardId);
-
-    if (!card) {
-      return res.status(HttpStatus.NOT_FOUND).send({ message: 'Карточка не найдена' });
-    }
-
-    return res.send({ message: 'Карточка удалена' });
-  } catch (error) {
-    return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send({ message: 'На сервере произошла ошибка' });
-  }
-};
-
-export const likeCard = async (req: Request, res: Response) => {
+export const deleteCard = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { cardId } = req.params;
     const userId = req.user?._id;
 
     if (!cardId.match(/^[0-9a-fA-F]{24}$/)) {
-      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Некорректный _id карточки' });
+      throw new BadRequestError('Некорректный _id карточки');
+    }
+
+    const card = await Card.findById(cardId);
+
+    if (!card) {
+      throw new NotFoundError('Карточка не найдена');
+    }
+
+    if (card.owner.toString() !== userId) {
+      throw new ForbiddenError('Нельзя удалить карточку другого пользователя');
+    }
+
+    await Card.findByIdAndDelete(cardId);
+
+    return res.send({ message: 'Карточка удалена' });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+export const likeCard = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { cardId } = req.params;
+    const userId = req.user?._id;
+
+    if (!cardId.match(/^[0-9a-fA-F]{24}$/)) {
+      throw new BadRequestError('Некорректный _id карточки');
     }
 
     const card = await Card.findByIdAndUpdate(
@@ -92,7 +102,7 @@ export const likeCard = async (req: Request, res: Response) => {
     );
 
     if (!card) {
-      return res.status(HttpStatus.NOT_FOUND).send({ message: 'Карточка не найдена' });
+      throw new NotFoundError('Карточка не найдена');
     }
 
     const formattedCard = {
@@ -106,17 +116,17 @@ export const likeCard = async (req: Request, res: Response) => {
 
     return res.send(formattedCard);
   } catch (error) {
-    return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send({ message: 'На сервере произошла ошибка' });
+    return next(error);
   }
 };
 
-export const dislikeCard = async (req: Request, res: Response) => {
+export const dislikeCard = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { cardId } = req.params;
     const userId = req.user?._id;
 
     if (!cardId.match(/^[0-9a-fA-F]{24}$/)) {
-      return res.status(HttpStatus.BAD_REQUEST).send({ message: 'Некорректный _id карточки' });
+      throw new BadRequestError('Некорректный _id карточки');
     }
 
     const card = await Card.findByIdAndUpdate(
@@ -126,7 +136,7 @@ export const dislikeCard = async (req: Request, res: Response) => {
     );
 
     if (!card) {
-      return res.status(HttpStatus.NOT_FOUND).send({ message: 'Карточка не найдена' });
+      throw new NotFoundError('Карточка не найдена');
     }
 
     const formattedCard = {
@@ -140,6 +150,6 @@ export const dislikeCard = async (req: Request, res: Response) => {
 
     return res.send(formattedCard);
   } catch (error) {
-    return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send({ message: 'На сервере произошла ошибка' });
+    return next(error);
   }
 };
