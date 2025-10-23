@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
-import userRoutes from './routes/userRoutes';
-import cardRoutes from './routes/cardRoutes';
+import router from './routes';
+import HttpStatus from './types/httpStatus';
 
 const app = express();
 const PORT = 3000;
@@ -10,24 +10,14 @@ app.use(express.json());
 
 // Временное решение авторизации
 app.use((req: Request, res: Response, next: NextFunction) => {
-  (req as any).user = {
+  req.user = {
     _id: '68f66fb5ee3f14282a5459cc',
   };
   next();
 });
 
-// Подключение к MongoDB
-mongoose.connect('mongodb://localhost:27017/mestodb')
-  .then(() => {
-    console.log('Подключено к MongoDB');
-  })
-  .catch((error) => {
-    console.error('Ошибка подключения к MongoDB:', error);
-  });
-
 // Подключение роутов
-app.use('/users', userRoutes);
-app.use('/cards', cardRoutes);
+app.use(router);
 
 app.get('/', (req, res) => {
   res.send('Hello, World!');
@@ -35,9 +25,22 @@ app.get('/', (req, res) => {
 
 // Обработка несуществующих роутов
 app.use('*', (req, res) => {
-  res.status(404).json({ message: 'Запрашиваемый ресурс не найден' });
+  res.status(HttpStatus.NOT_FOUND).json({ message: 'Запрашиваемый ресурс не найден' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Сервер запущен на порту ${PORT}`);
-});
+// Подключение к MongoDB и запуск сервера
+const start = async () => {
+  try {
+    await mongoose.connect('mongodb://localhost:27017/mestodb');
+    console.log('Подключено к MongoDB');
+
+    app.listen(PORT, () => {
+      console.log(`Сервер запущен на порту ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Ошибка подключения к MongoDB:', error);
+    process.exit(1);
+  }
+};
+
+start();
